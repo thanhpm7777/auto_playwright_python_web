@@ -31,6 +31,6 @@ class LoginPage(BasePage):
 
     def assert_logged_in(self):
         with allure.step("Xác minh đã đăng nhập có username"):
-            expect(self.page.locator(".username")).to_have_text("thanhpm")
+            expect(self.page.locator(".username")).to_have_text("test1111")
 
 

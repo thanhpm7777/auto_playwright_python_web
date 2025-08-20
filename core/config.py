@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     USER_PASSWORD: str = "123456"
 
     PW_HEADLESS: bool = True
-    PW_BROWSER: str = "firefox"  # chromium | firefox | webkit
+    PW_BROWSER: str = "chromium"  # chromium | firefox | webkit
     PW_TIMEOUT: int = 10000
 
     STORAGE_STATE: str = "artifacts/storage_state.json"
