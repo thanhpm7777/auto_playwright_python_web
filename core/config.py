@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     BASE_URL: str = "https://hocvancungricky.com/"
-    USER_EMAIL: str = "thanhpm"
-    USER_PASSWORD: str = "th@nh@2024"
+    USER_EMAIL: str = "test1111@gmail.com"
+    USER_PASSWORD: str = "123456"
 
     PW_HEADLESS: bool = True
     PW_BROWSER: str = "firefox"  # chromium | firefox | webkit

@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
 
 permissions:
   contents: read
@@ -18,6 +19,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # Add timeout to prevent hanging
 
     steps:
       - name: Checkout
@@ -27,6 +29,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip' # Cache pip dependencies
 
       - name: Install dependencies
         run: |
@@ -34,7 +37,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Install Playwright browsers
-        uses: microsoft/playwright-github-action@v1
+        run: |
+          playwright install --with-deps chromium
+        # More specific than using the action
 
       - name: Run tests
         env:
@@ -44,18 +49,32 @@ jobs:
           HEADLESS: 'true'
           BROWSER: 'chromium'
         run: |
-          pytest -q || true
-          # Không fail workflow khi test fail nếu bạn chỉ muốn xem báo cáo; bỏ '|| true' để nghiêm ngặt
+          pytest --alluredir=allure-results --tb=short -v
+        # Remove '|| true' to properly fail on test failures
+        # Add explicit allure directory and better output formatting
+
+      - name: Upload test results on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-failure-logs
+          path: |
+            test-results/
+            screenshots/
+            videos/
 
       - name: Upload Allure results
         uses: actions/upload-artifact@v4
+        if: always() # Upload even if tests fail
         with:
           name: allure-results
           path: allure-results
+          retention-days: 30
 
   report:
     needs: test
     runs-on: ubuntu-latest
+    if: always() # Generate report even if tests failed
 
     steps:
       - name: Download allure-results
@@ -64,7 +83,7 @@ jobs:
           name: allure-results
           path: allure-results
 
-      - name: Setup Java (Allure CLI cần Java)
+      - name: Setup Java (for Allure CLI)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -72,11 +91,22 @@ jobs:
 
       - name: Install Allure CLI
         run: |
-          npm i -g allure-commandline
+          npm i -g allure-commandline@2.24.1
+        # Pin version for consistency
 
       - name: Generate Allure Report
         run: |
           allure generate allure-results -o allure-report --clean
+
+      - name: Add report metadata
+        run: |
+          echo "# Test Report" > allure-report/README.md
+          echo "Generated: $(date)" >> allure-report/README.md
+          echo "Workflow: ${{ github.workflow }}" >> allure-report/README.md
+          echo "Run ID: ${{ github.run_id }}" >> allure-report/README.md
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -86,3 +116,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  notify:
+    needs: [test, report]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Notify on failure
+        if: needs.test.result == 'failure'
+        run: |
+          echo "::error title=E2E Tests Failed::Tests failed on main branch. Check the report at: ${{ steps.deployment.outputs.page_url }}"
+
+      - name: Notify on success
+        if: needs.test.result == 'success'
+        run: |
+          echo "::notice title=E2E Tests Passed::All tests passed! Report available at: ${{ steps.deployment.outputs.page_url }}"
