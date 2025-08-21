@@ -31,3 +31,38 @@ class BasePage:
 
     def click_button(self, name: str):
         self.page.get_by_role("button", name=name, exact=True).click()
+
+
+        # ===== Thêm helper locator dạng khác =====
+
+    # Lấy theo CSS selector
+    def get_by_css(self, selector: str):
+        return self.page.locator(selector)
+
+    # Lấy theo ID
+    def get_by_id(self, element_id: str):
+        return self.page.locator(f"#{element_id}")
+
+    # Lấy theo class name
+    def get_by_class(self, class_name: str):
+        return self.page.locator(f".{class_name}")
+
+    # Lấy theo text (thường dùng cho label hoặc button có text rõ ràng)
+    def get_by_text(self, text: str, exact: bool = True):
+        return self.page.get_by_text(text, exact=exact)
+
+    # Lấy theo name attribute (input name, select name)
+    def get_by_name(self, name: str):
+        return self.page.locator(f"[name='{name}']")
+
+    # Lấy theo XPath (ít dùng nhưng vẫn cần khi CSS khó)
+    def get_by_xpath(self, xpath: str):
+        return self.page.locator(f"xpath={xpath}")
+
+    # Click theo text (shortcut)
+    def click_by_text(self, text: str, exact: bool = True):
+        self.get_by_text(text, exact).click()
+
+    # Điền input theo name
+    def fill_by_name(self, name: str, value: str):
+        self.get_by_name(name).fill(value)

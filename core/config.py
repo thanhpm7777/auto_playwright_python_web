@@ -3,11 +3,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    BASE_URL: str = "https://hocvancungricky.com/"
+    BASE_URL: str = "https://hocvancokimngan.com/"
     USER_EMAIL: str = "test1111@gmail.com"
     USER_PASSWORD: str = "123456"
 
-    PW_HEADLESS: bool = True
+    PW_HEADLESS: bool = False
     PW_BROWSER: str = "chromium"  # chromium | firefox | webkit
     PW_TIMEOUT: int = 10000
 

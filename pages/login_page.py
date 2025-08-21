@@ -9,6 +9,12 @@ class LoginPage(BasePage):
 
     PH_EMAIL = "Tên đăng nhập hoặc email"
     PH_PASSWORD = "Mật khẩu"
+    
+    lbl_username="username"
+    lbl_messages="div[role='alert']"
+
+    
+
 
     def goto(self):
         with allure.step("Mở trang chủ"):
@@ -22,15 +28,22 @@ class LoginPage(BasePage):
             self.fill_by_placeholder(self.PH_EMAIL, email)
             self.fill_by_placeholder(self.PH_PASSWORD, password)
         with allure.step("Đăng nhập"):
-            self.click_button(self.BTN_SIGN_IN)
+            self.click_button(self.BTN_SIGN_IN) 
         return self
 
     # def assert_logged_in(self):
     #     with allure.step("Xác minh đã đăng nhập co username"):
     #         expect(self.page.get_by_role("link", name="thanhpm", exact=True)).to_be_visible()
 
-    def assert_logged_in(self):
-        with allure.step("Xác minh đã đăng nhập có username"):
-            expect(self.page.locator(".username")).to_have_text("test1111")
+    def assert_logged_in(self, username):
+        with allure.step("Xác minh đã đăng nhập thành công"):
+            expect(self.get_by_class(self.lbl_username)).to_have_text(username)
+            
+
+
+    def assert_login_fail(self, username):
+        with allure.step("đăng nhập không thành công"):
+            expect(self.get_by_css(self.lbl_messages)).to_contain_text(username)
+            
 
 
