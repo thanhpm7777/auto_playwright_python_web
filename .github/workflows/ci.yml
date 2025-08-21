@@ -34,11 +34,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers (Python)
         run: |
           python -m playwright install --with-deps chromium
 
-      - name: Run tests
+      - name: Run tests (pytest + Allure results)
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
           USER_EMAIL: ${{ secrets.USER_EMAIL }}
@@ -48,7 +48,7 @@ jobs:
         run: |
           pytest --alluredir=allure-results --tb=short -v
 
-      # Nếu test fail, gom log/video/screenshot để xem nhanh
+      # Gom log/video/screenshot khi fail (nếu có)
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -61,13 +61,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # Luôn upload raw Allure results để build HTML ở job sau
-      - name: Upload Allure results
+      # Luôn upload Allure raw để job sau build HTML
+      - name: Upload Allure results (raw)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-results
           path: allure-results
+          if-no-files-found: error
           retention-days: 30
 
   report:
@@ -104,6 +105,7 @@ jobs:
         with:
           name: allure-report-html
           path: allure-report
+          if-no-files-found: error
           retention-days: 30
 
   notify:
