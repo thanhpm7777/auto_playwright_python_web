@@ -5,12 +5,10 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: ci-web-e2e-${{ github.ref }}
@@ -19,7 +17,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # Add timeout to prevent hanging
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -29,17 +27,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip' # Cache pip dependencies
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers
+      - name: Install Playwright (Chromium only)
         run: |
-          playwright install --with-deps chromium
-        # More specific than using the action
+          npx playwright install --with-deps chromium
 
       - name: Run tests
         env:
@@ -50,22 +47,24 @@ jobs:
           BROWSER: 'chromium'
         run: |
           pytest --alluredir=allure-results --tb=short -v
-        # Remove '|| true' to properly fail on test failures
-        # Add explicit allure directory and better output formatting
 
-      - name: Upload test results on failure
-        uses: actions/upload-artifact@v4
+      # Nếu test fail, gom log/video/screenshot để xem nhanh
+      - name: Upload failure artifacts
         if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          name: test-failure-logs
+          name: e2e-failure-artifacts
           path: |
             test-results/
             screenshots/
             videos/
+          if-no-files-found: ignore
+          retention-days: 14
 
+      # Luôn upload raw Allure results để build HTML ở job sau
       - name: Upload Allure results
+        if: always()
         uses: actions/upload-artifact@v4
-        if: always() # Upload even if tests fail
         with:
           name: allure-results
           path: allure-results
@@ -74,7 +73,7 @@ jobs:
   report:
     needs: test
     runs-on: ubuntu-latest
-    if: always() # Generate report even if tests failed
+    if: always()
 
     steps:
       - name: Download allure-results
@@ -83,52 +82,41 @@ jobs:
           name: allure-results
           path: allure-results
 
-      - name: Setup Java (for Allure CLI)
+      - name: Setup Java (Allure CLI)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Install Allure CLI
-        run: |
-          npm i -g allure-commandline@2.24.1
-        # Pin version for consistency
+        run: npm i -g allure-commandline@2.24.1
 
-      - name: Generate Allure Report
+      - name: Generate Allure HTML report
         run: |
           allure generate allure-results -o allure-report --clean
-
-      - name: Add report metadata
-        run: |
           echo "# Test Report" > allure-report/README.md
           echo "Generated: $(date)" >> allure-report/README.md
           echo "Workflow: ${{ github.workflow }}" >> allure-report/README.md
           echo "Run ID: ${{ github.run_id }}" >> allure-report/README.md
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload Allure HTML (artifact)
+        uses: actions/upload-artifact@v4
         with:
+          name: allure-report-html
           path: allure-report
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          retention-days: 30
 
   notify:
     needs: [test, report]
     runs-on: ubuntu-latest
     if: always() && github.ref == 'refs/heads/main'
-
     steps:
-      - name: Notify on failure
+      - name: Summary (tests failed)
         if: needs.test.result == 'failure'
         run: |
-          echo "::error title=E2E Tests Failed::Tests failed on main branch. Check the report at: ${{ steps.deployment.outputs.page_url }}"
+          echo "::error title=E2E Tests Failed::Tests failed on main. Download 'allure-report-html' artifact in this run to view the report."
 
-      - name: Notify on success
+      - name: Summary (tests passed)
         if: needs.test.result == 'success'
         run: |
-          echo "::notice title=E2E Tests Passed::All tests passed! Report available at: ${{ steps.deployment.outputs.page_url }}"
+          echo "::notice title=E2E Tests Passed::All tests passed. Download 'allure-report-html' artifact in this run to view the report."
