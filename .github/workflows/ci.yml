@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 5"   # 9h sáng thứ 6 (giờ VN)
 
 permissions:
   contents: read
@@ -18,26 +20,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: Install Playwright browsers (Python)
-        run: |
-          python -m playwright install --with-deps chromium
-
+        run: python -m playwright install --with-deps chromium
       - name: Run tests (pytest + Allure results)
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -45,10 +41,7 @@ jobs:
           USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
           HEADLESS: 'true'
           BROWSER: 'chromium'
-        run: |
-          pytest --alluredir=allure-results --tb=short -v
-
-      # Gom log/video/screenshot khi fail (nếu có)
+        run: pytest --alluredir=allure-results --tb=short -v
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -60,8 +53,6 @@ jobs:
             videos/
           if-no-files-found: ignore
           retention-days: 14
-
-      # Luôn upload Allure raw để job sau build HTML
       - name: Upload Allure results (raw)
         if: always()
         uses: actions/upload-artifact@v4
@@ -75,23 +66,19 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: always()
-
     steps:
       - name: Download allure-results
         uses: actions/download-artifact@v4
         with:
           name: allure-results
           path: allure-results
-
       - name: Setup Java (Allure CLI)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Install Allure CLI
         run: npm i -g allure-commandline@2.24.1
-
       - name: Generate Allure HTML report
         run: |
           allure generate allure-results -o allure-report --clean
@@ -99,7 +86,6 @@ jobs:
           echo "Generated: $(date)" >> allure-report/README.md
           echo "Workflow: ${{ github.workflow }}" >> allure-report/README.md
           echo "Run ID: ${{ github.run_id }}" >> allure-report/README.md
-
       - name: Upload Allure HTML (artifact)
         uses: actions/upload-artifact@v4
         with:
@@ -117,7 +103,6 @@ jobs:
         if: needs.test.result == 'failure'
         run: |
           echo "::error title=E2E Tests Failed::Tests failed on main. Download 'allure-report-html' artifact in this run to view the report."
-
       - name: Summary (tests passed)
         if: needs.test.result == 'success'
         run: |
