@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     USER_EMAIL: str = "test1111@gmail.com"
     USER_PASSWORD: str = "123456"
 
-    PW_HEADLESS: bool = False
+    PW_HEADLESS: bool = True
     PW_BROWSER: str = "chromium"  # chromium | firefox | webkit
     PW_TIMEOUT: int = 10000
 
